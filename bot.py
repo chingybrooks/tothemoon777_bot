@@ -75,8 +75,12 @@ def send_daily_update():
     report = create_market_report()
     bot.send_message(CHANNEL_ID, report)
 
-# Планировщик для ежедневного отчета
-schedule.every().day.at("08:00").do(send_daily_update)
+# Настройка расписания в зависимости от времени года
+# Зимнее время (UTC-8)
+schedule.every().day.at("21:00").do(send_daily_update)  # Запуск в 21:00 предыдущего дня
+
+# Летнее время (UTC-7) - раскомментируйте при необходимости
+# schedule.every().day.at("22:00").do(send_daily_update)  # Запуск в 22:00 предыдущего дня
 
 if __name__ == "__main__":
     while True:
