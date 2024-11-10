@@ -74,6 +74,7 @@ def create_market_report():
 def send_daily_update():
     report = create_market_report()
     bot.send_message(CHANNEL_ID, report)
+    print("Сообщение отправлено в канал")
 
 # Настройка расписания для отправки оповещений в зависимости от времени года
 # Зимнее время (UTC-8)
@@ -85,11 +86,13 @@ schedule.every().day.at("21:00").do(send_daily_update)  # Запуск в 21:00 
 # Обработчик команды /start
 @bot.message_handler(commands=['start'])
 def handle_start(message):
+    print("Команда /start получена")  # Отладочное сообщение
     # Немедленно отправить первое сообщение
     send_daily_update()
     bot.reply_to(message, "Бот запущен! Оповещения будут приходить каждый день по расписанию.")
 
 if __name__ == "__main__":
+    print("Бот запущен")  # Отладочное сообщение
     # Запуск бота и периодическая проверка задач
     while True:
         schedule.run_pending()  # Проверка задач по расписанию
