@@ -76,7 +76,7 @@ def send_daily_update():
     bot.send_message(CHANNEL_ID, report)
 
 # Настройка тестового расписания для отправки через 1 минуту
-schedule.every(2).minute.do(send_daily_update)  # Отправка через 2 минуту
+schedule.every(2).minutes.do(send_daily_update)  # Отправка через 2 минуту
 
 if __name__ == "__main__":
     while True:
