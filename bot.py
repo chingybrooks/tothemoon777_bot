@@ -11,6 +11,9 @@ load_dotenv()
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHANNEL_ID = os.getenv("CHANNEL_ID")
 
+if not TELEGRAM_TOKEN:
+    raise ValueError("TELEGRAM_TOKEN is not set!")
+
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
 def fetch_crypto_data():
