@@ -14,18 +14,23 @@ CHANNEL_ID = os.getenv("CHANNEL_ID")
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
 def fetch_crypto_data():
-    # URL и параметры для запроса данных о криптовалютах
+    print("Запрос к API CoinGecko для получения данных о криптовалютах...")
     url = "https://api.coingecko.com/api/v3/simple/price"
     params = {
         "ids": "bitcoin,ethereum,binancecoin,solana",  # Указываем нужные монеты
         "vs_currencies": "usd",
         "include_24hr_change": "true",
     }
-    response = requests.get(url, params=params)
-    return response.json()
+    try:
+        response = requests.get(url, params=params)
+        print(f"Ответ от API: {response.text}")
+        return response.json()
+    except Exception as e:
+        print(f"Ошибка при запросе данных о криптовалютах: {e}")
+        return None
 
 def fetch_market_data():
-    # Получаем индекс страха и жадности
+    print("Запрос к API для получения рыночных данных...")
     fear_greed_url = "https://api.alternative.me/fng/"
     market_cap_url = "https://api.coingecko.com/api/v3/global"
 
@@ -49,10 +54,12 @@ def fetch_market_data():
         return None
 
 def create_market_report():
+    print("Создание отчета...")
     crypto_data = fetch_crypto_data()
     market_data = fetch_market_data()
 
     if not crypto_data or not market_data:
+        print("Не удалось получить данные для отчета.")
         return "Не удалось получить данные для отчета."
 
     report = "📊 Утреннее состояние рынка\n\n"
@@ -69,12 +76,17 @@ def create_market_report():
     report += f"- Индекс страха и жадности: {market_data['fear_greed_index']} ({market_data['fear_greed_text']})\n"
     report += f"- Доминация BTC: {market_data['btc_dominance']:.2f}%"
 
+    print("Отчет готов.")
     return report
 
 def send_daily_update():
+    print("Отправка ежедневного обновления...")
     report = create_market_report()
-    bot.send_message(CHANNEL_ID, report)
-    print("Сообщение отправлено в канал")
+    if report:
+        bot.send_message(CHANNEL_ID, report)
+        print("Сообщение отправлено в канал.")
+    else:
+        print("Не удалось отправить сообщение, отчет пустой.")
 
 # Настройка расписания для отправки оповещений в зависимости от времени года
 # Зимнее время (UTC-8)
