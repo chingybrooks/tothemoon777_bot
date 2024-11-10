@@ -75,10 +75,22 @@ def send_daily_update():
     report = create_market_report()
     bot.send_message(CHANNEL_ID, report)
 
-# Настройка тестового расписания для отправки через 1 минуту
-schedule.every(2).minutes.do(send_daily_update)  # Отправка через 2 минуту
+# Настройка расписания для отправки оповещений в зависимости от времени года
+# Зимнее время (UTC-8)
+schedule.every().day.at("21:00").do(send_daily_update)  # Запуск в 21:00 предыдущего дня
+
+# Летнее время (UTC-7) - раскомментируйте при необходимости
+# schedule.every().day.at("22:00").do(send_daily_update)  # Запуск в 22:00 предыдущего дня
+
+# Обработчик команды /start
+@bot.message_handler(commands=['start'])
+def handle_start(message):
+    # Немедленно отправить первое сообщение
+    send_daily_update()
+    bot.reply_to(message, "Бот запущен! Оповещения будут приходить каждый день по расписанию.")
 
 if __name__ == "__main__":
+    # Запуск бота и периодическая проверка задач
     while True:
-        schedule.run_pending()
-        time.sleep(60)  # Проверка задач каждую минуту
+        schedule.run_pending()  # Проверка задач по расписанию
+        time.sleep(60)  # Проверка каждую минуту
