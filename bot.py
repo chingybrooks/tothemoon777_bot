@@ -11,29 +11,19 @@ load_dotenv()
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHANNEL_ID = os.getenv("CHANNEL_ID")
 
-if not TELEGRAM_TOKEN:
-    raise ValueError("TELEGRAM_TOKEN is not set!")
-
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
 def fetch_crypto_data():
-    print("Запрос к API CoinGecko для получения данных о криптовалютах...")
     url = "https://api.coingecko.com/api/v3/simple/price"
     params = {
-        "ids": "bitcoin,ethereum,binancecoin,solana",  # Указываем нужные монеты
+        "ids": "bitcoin,ethereum,binancecoin,solana",  # IDs для нужных монет
         "vs_currencies": "usd",
         "include_24hr_change": "true",
     }
-    try:
-        response = requests.get(url, params=params)
-        print(f"Ответ от API: {response.text}")
-        return response.json()
-    except Exception as e:
-        print(f"Ошибка при запросе данных о криптовалютах: {e}")
-        return None
+    response = requests.get(url, params=params)
+    return response.json()
 
 def fetch_market_data():
-    print("Запрос к API для получения рыночных данных...")
     fear_greed_url = "https://api.alternative.me/fng/"
     market_cap_url = "https://api.coingecko.com/api/v3/global"
 
@@ -44,71 +34,67 @@ def fetch_market_data():
         fear_greed_index = int(fear_greed["value"])
         fear_greed_text = "Жадность" if fear_greed_index >= 50 else "Страх"
         market_cap = market_data["total_market_cap"]["usd"]
+        market_cap_change_24h = market_data["market_cap_change_percentage_24h_usd"]
         btc_dominance = market_data["market_cap_percentage"]["btc"]
+        altcoin_dominance = 100 - btc_dominance
 
         return {
             "fear_greed_index": fear_greed_index,
             "fear_greed_text": fear_greed_text,
             "market_cap": market_cap,
+            "market_cap_change_24h": market_cap_change_24h,
             "btc_dominance": btc_dominance,
+            "altcoin_dominance": altcoin_dominance,
         }
     except Exception as e:
         print(f"Ошибка при получении рыночных данных: {e}")
         return None
 
 def create_market_report():
-    print("Создание отчета...")
     crypto_data = fetch_crypto_data()
     market_data = fetch_market_data()
 
     if not crypto_data or not market_data:
-        print("Не удалось получить данные для отчета.")
         return "Не удалось получить данные для отчета."
 
     report = "📊 Утреннее состояние рынка\n\n"
     
+    # Словарь для замены названий криптовалют на сокращенные версии
+    crypto_names = {
+        "bitcoin": "BTC",
+        "ethereum": "ETH",
+        "binancecoin": "BNB",
+        "solana": "SOL",
+    }
+
     # Добавляем информацию по каждой криптовалюте
     for coin, data in crypto_data.items():
-        name = coin.upper()
+        name = crypto_names.get(coin, coin.upper())  # Заменяем название
         price = data["usd"]
         change = data["usd_24h_change"]
         report += f"- {name}: ${price:,.2f} ({change:+.2f}%)\n"
     
     # Добавляем информацию о рынке
-    report += f"\n- Капитализация рынка ≈ ${market_data['market_cap']:,.0f}\n"
+    report += f"\n- Капитализация рынка ≈ ${market_data['market_cap']:,.0f} ({market_data['market_cap_change_24h']:+.2f}%)\n"
     report += f"- Индекс страха и жадности: {market_data['fear_greed_index']} ({market_data['fear_greed_text']})\n"
-    report += f"- Доминация BTC: {market_data['btc_dominance']:.2f}%"
+    report += f"- Доминация BTC: {market_data['btc_dominance']:.2f}%\n"
+    report += f"- Доминация альткоинов: {market_data['altcoin_dominance']:.2f}%"
 
-    print("Отчет готов.")
     return report
 
 def send_daily_update():
-    print("Отправка ежедневного обновления...")
     report = create_market_report()
-    if report:
-        bot.send_message(CHANNEL_ID, report)
-        print("Сообщение отправлено в канал.")
-    else:
-        print("Не удалось отправить сообщение, отчет пустой.")
+    bot.send_message(CHANNEL_ID, report)
 
-# Настройка расписания для отправки оповещений в зависимости от времени года
-# Зимнее время (UTC-8)
-schedule.every().day.at("21:00").do(send_daily_update)  # Запуск в 21:00 предыдущего дня
+# Настройка расписания
+schedule.every().day.at("21:00").do(send_daily_update)  # Зимнее время (UTC-8)
 
-# Летнее время (UTC-7) - раскомментируйте при необходимости
-# schedule.every().day.at("22:00").do(send_daily_update)  # Запуск в 22:00 предыдущего дня
-
-# Обработчик команды /start
 @bot.message_handler(commands=['start'])
 def handle_start(message):
-    print("Команда /start получена")  # Отладочное сообщение
-    # Немедленно отправить первое сообщение
     send_daily_update()
     bot.reply_to(message, "Бот запущен! Оповещения будут приходить каждый день по расписанию.")
 
 if __name__ == "__main__":
-    print("Бот запущен")  # Отладочное сообщение
-    # Запуск бота и периодическая проверка задач
     while True:
-        schedule.run_pending()  # Проверка задач по расписанию
-        time.sleep(60)  # Проверка каждую минуту
+        schedule.run_pending()
+        time.sleep(60)
