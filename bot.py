@@ -75,8 +75,8 @@ def create_market_report():
         report += f"- {name}: ${price:,.2f} ({change:+.2f}%)\n"
     
     # Добавляем информацию о рынке
-    report += f"\n- Капитализация рынка ≈ ${market_data['market_cap']:,.0f} ({market_data['market_cap_change_24h']:+.2f}%)\n"
-    report += f"- Индекс страха и жадности: {market_data['fear_greed_index']} ({market_data['fear_greed_text']})\n"
+    report += f"\n- Капитализация ≈ ${market_data['market_cap']:,.0f} ({market_data['market_cap_change_24h']:+.2f}%)\n"
+    report += f"- Индекс: {market_data['fear_greed_index']} ({market_data['fear_greed_text']})\n"
     report += f"- Доминация BTC: {market_data['btc_dominance']:.2f}%\n"
     report += f"- Доминация альткоинов: {market_data['altcoin_dominance']:.2f}%"
 
