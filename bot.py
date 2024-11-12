@@ -78,11 +78,11 @@ def send_daily_update():
     report = create_market_report()
     bot.send_message(CHANNEL_ID, report)
 
-# Утреннее время (UTC+5)
-schedule.every().day.at("10:30").do(send_daily_update)  # Отправка в 10:30 по UTC+5
+# Настройка расписания на 10:30 по UTC+5
+schedule.every().day.at("05:30").do(send_daily_update)  # Утреннее уведомление в 10:30 UTC+5
 
-# Вечернее время (UTC+5)
-schedule.every().day.at("18:30").do(send_daily_update)  # Отправка в 18:30 по UTC+5
+# Настройка расписания на 18:30 по UTC+5
+schedule.every().day.at("13:30").do(send_daily_update)  # Вечернее уведомление в 18:30 UTC+5
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
