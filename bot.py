@@ -25,24 +25,17 @@ def fetch_crypto_data():
 
 def fetch_market_data():
     fear_greed_url = "https://api.alternative.me/fng/"
-    market_cap_url = "https://api.coingecko.com/api/v3/global"
+    market_data = requests.get(fear_greed_url).json()["data"][0]
 
     try:
-        fear_greed = requests.get(fear_greed_url).json()["data"][0]
-        market_data = requests.get(market_cap_url).json()["data"]
-
-        fear_greed_index = int(fear_greed["value"])
+        fear_greed_index = int(market_data["value"])
         fear_greed_text = "Жадность" if fear_greed_index >= 50 else "Страх"
-        market_cap = market_data["total_market_cap"]["usd"]
-        market_cap_change_24h = market_data["market_cap_change_percentage_24h_usd"]
-        btc_dominance = market_data["market_cap_percentage"]["btc"]
+        btc_dominance = requests.get("https://api.coingecko.com/api/v3/global").json()["data"]["market_cap_percentage"]["btc"]
         altcoin_dominance = 100 - btc_dominance
 
         return {
             "fear_greed_index": fear_greed_index,
             "fear_greed_text": fear_greed_text,
-            "market_cap": market_cap,
-            "market_cap_change_24h": market_cap_change_24h,
             "btc_dominance": btc_dominance,
             "altcoin_dominance": altcoin_dominance,
         }
@@ -57,7 +50,7 @@ def create_market_report():
     if not crypto_data or not market_data:
         return "Не удалось получить данные для отчета."
 
-    report = "📊 Утреннее состояние рынка\n\n"
+    report = "📊 Текущее состояние рынка\n\n"
     
     # Словарь для замены названий криптовалют на сокращенные версии
     crypto_names = {
@@ -75,8 +68,7 @@ def create_market_report():
         report += f"- {name}: ${price:,.2f} ({change:+.2f}%)\n"
     
     # Добавляем информацию о рынке
-    report += f"\n- Капитализация ≈ ${market_data['market_cap']:,.0f} ({market_data['market_cap_change_24h']:+.2f}%)\n"
-    report += f"- Индекс: {market_data['fear_greed_index']} ({market_data['fear_greed_text']})\n"
+    report += f"\n- Индекс страха и жадности: {market_data['fear_greed_index']} ({market_data['fear_greed_text']})\n"
     report += f"- Доминация BTC: {market_data['btc_dominance']:.2f}%\n"
     report += f"- Доминация альткоинов: {market_data['altcoin_dominance']:.2f}%"
 
@@ -86,13 +78,18 @@ def send_daily_update():
     report = create_market_report()
     bot.send_message(CHANNEL_ID, report)
 
-# Настройка расписания
-schedule.every().day.at("21:00").do(send_daily_update)  # Зимнее время (UTC-8)
+# Настройка расписания на 10:30 по UTC+5
+schedule.every().day.at("05:30").do(send_daily_update)  # Время в UTC
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
     send_daily_update()
     bot.reply_to(message, "Бот запущен! Оповещения будут приходить каждый день по расписанию.")
+
+@bot.message_handler(commands=['update'])
+def handle_update(message):
+    report = create_market_report()
+    bot.reply_to(message, report)
 
 if __name__ == "__main__":
     while True:
