@@ -5,6 +5,9 @@ import schedule
 import time
 from dotenv import load_dotenv
 from datetime import datetime
+import logging
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 # Загрузка переменных окружения из .env файла
 load_dotenv()
@@ -14,14 +17,19 @@ CHANNEL_ID = os.getenv("CHANNEL_ID")
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
 def fetch_crypto_data():
-    url = "https://api.coingecko.com/api/v3/simple/price"
-    params = {
-        "ids": "bitcoin,ethereum,binancecoin,solana",  # IDs для нужных монет
-        "vs_currencies": "usd",
-        "include_24hr_change": "true",
-    }
-    response = requests.get(url, params=params)
-    return response.json()
+    try:
+        url = "https://api.coingecko.com/api/v3/simple/price"
+        params = {
+            "ids": "bitcoin,ethereum,binancecoin,solana",
+            "vs_currencies": "usd",
+            "include_24hr_change": "true",
+        }
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        print(f"Ошибка при получении данных о криптовалюте: {e}")
+        return None
 
 def fetch_market_data():
     fear_greed_url = "https://api.alternative.me/fng/"
@@ -29,19 +37,32 @@ def fetch_market_data():
 
     try:
         fear_greed_index = int(market_data["value"])
-        fear_greed_text = "Жадность" if fear_greed_index >= 50 else "Страх"
         btc_dominance = requests.get("https://api.coingecko.com/api/v3/global").json()["data"]["market_cap_percentage"]["btc"]
         altcoin_dominance = 100 - btc_dominance
 
         return {
             "fear_greed_index": fear_greed_index,
-            "fear_greed_text": fear_greed_text,
             "btc_dominance": btc_dominance,
             "altcoin_dominance": altcoin_dominance,
         }
     except Exception as e:
         print(f"Ошибка при получении рыночных данных: {e}")
         return None
+
+def interpret_fear_greed_index(value):
+    """
+    Интерпретирует индекс страха и жадности кратко.
+    """
+    if 0 <= value <= 24:
+        return "Экстремальный страх"
+    elif 25 <= value <= 49:
+        return "Страх"
+    elif 50 <= value <= 74:
+        return "Жадность"
+    elif 75 <= value <= 100:
+        return "Экстремальная жадность"
+    else:
+        return "Некорректное значение"
 
 def create_market_report():
     crypto_data = fetch_crypto_data()
@@ -68,7 +89,8 @@ def create_market_report():
         report += f"- {name}: ${price:,.2f} ({change:+.2f}%)\n"
     
     # Добавляем информацию о рынке
-    report += f"\n- Индекс страха и жадности: {market_data['fear_greed_index']} ({market_data['fear_greed_text']})\n"
+    fear_greed = interpret_fear_greed_index(market_data["fear_greed_index"])
+    report += f"\n- Индекс страха и жадности: {market_data['fear_greed_index']} ({fear_greed})\n"
     report += f"- Доминация BTC: {market_data['btc_dominance']:.2f}%\n"
     report += f"- Доминация альткоинов: {market_data['altcoin_dominance']:.2f}%"
 
@@ -76,7 +98,14 @@ def create_market_report():
 
 def send_daily_update():
     report = create_market_report()
-    bot.send_message(CHANNEL_ID, report)
+    if report:
+        try:
+            bot.send_message(CHANNEL_ID, report)
+            logging.info("Отчет успешно отправлен в канал.")
+        except Exception as e:
+            logging.error(f"Ошибка при отправке отчета: {e}")
+    else:
+        logging.error("Не удалось создать отчет. Данные отсутствуют или некорректны.")
 
 # Настройка расписания на 10:30 по UTC+5
 schedule.every().day.at("05:30").do(send_daily_update)  # Утреннее уведомление в 10:30 UTC+5
